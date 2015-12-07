@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <libspe2.h>
 #include <pthread.h>
+#include <math.h>
 
 imageIO imageLoader;
 imageProcessor imagePro;
@@ -39,7 +40,8 @@ int findFactor(int num){
 struct dmaData {
 	void * inputData;
 	void * outputData;
-	char padding[120];
+	int spuIterations;
+	char padding[116];
 };
 
 // SPU Init Data
@@ -52,34 +54,43 @@ int main(){
 	
 	//MAIN CODE
 
-	unsigned char* rawData = imageLoader.openImage("Apples/test.png");
+	unsigned char* rawData = imageLoader.openImage("Apples/Gala.png");
 	int imageWidth = imageLoader.getImageWidth();
 	int imageHeight = imageLoader.getImageHeight();
 	int imageBytes = imageLoader.getImageBytes();
 	int imageSize = imageWidth * imageHeight * imageBytes;
-	unsigned char* squareData = imageLoader.squareImage(rawData, imageWidth, imageHeight, imageBytes);
+
+	unsigned char *squareData = imageLoader.squareImage(rawData, imageWidth, imageHeight, imageBytes);
 	delete[] rawData;
-	unsigned char testData[imageSize]__attribute__((aligned(128)));
-	unsigned char greyData[imageSize/4]__attribute__((aligned(128)));
-	for(int i = 0; i < imageSize; i++){
-		testData[i] = squareData[i];
-	}
+
 	imageWidth = imageLoader.getImageWidth();
 	imageHeight = imageLoader.getImageHeight();
 	imageSize = imageWidth * imageHeight * imageBytes;
-	printf("Image Size: %d \n", imageWidth);
+	
+	//unsigned char testData[imageSize]__attribute__((aligned(128)));
+	unsigned char greyData[imageSize/4]__attribute__((aligned(128)));
+	printf("Image Size: %d \n", imageSize);
+	for(int i = 0; i < imageSize; i++){
+		//testData[i] = squareData[i];
+	}
 	
 	dmaData DMA __attribute__((aligned(128)));
 	
-	DMA.inputData = (void *)testData;
+	int iterations = (imageSize / 65536) / 4; //imageSize in bytes / 64KB / Number of SPUs
+	
+	DMA.inputData = (void *)squareData;
 	DMA.outputData = (void *)greyData;
+	DMA.spuIterations = iterations;
+	
+	printf("Size of: %d", sizeof(DMA.inputData));
 		
 	// Determine number of available SPU
 	//printf("%s \n", "Determining Number of SPUs");
 	//spus = spe_cpu_info_get(SPE_COUNT_USABLE_SPES, 0);
 	
 	//Create a context and thread for each SPU
-	for(int i = 0; i < 1; i++){
+	for(int i = 0; i < 4; i++){
+		unsigned int spuID = i;
 		printf("Create Context for SPU: %d \n", i);
 		//Create Context
 		ptdata[i].context = spe_context_create(0, NULL);
@@ -94,10 +105,12 @@ int main(){
 		printf("Create Thread for SPU %d \n", i);
 		//Create thread
 		pthread_create(&pthread[i], NULL, &ppu_pthread_function, &ptdata[i]);
+		//Send SPUID to each SPU 
+		spe_in_mbox_write(ptdata[i].context,&spuID,1,SPE_MBOX_ANY_NONBLOCKING);
 	}
 	
 	//Wait for threads to finish processing
-	for(int i = 0; i < 1; i++){
+	for(int i = 0; i < 4; i++){
 		printf("Joining Thread for SPU %d \n", i);
 		pthread_join(pthread[i], NULL);
 		
@@ -109,7 +122,7 @@ int main(){
 	unsigned char* paddedImage = new unsigned char[imageSize];
 	paddedImage = imagePro.padOutImage(greyData, imageWidth, imageHeight, imageBytes);
 
-	imageLoader.saveImage("Apples/test-grey.png", paddedImage, imageSize);
+	imageLoader.saveImage("Apples/gala-grey.png", paddedImage, imageSize);
 	
 	return 0;
 }

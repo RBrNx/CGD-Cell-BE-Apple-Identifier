@@ -104,7 +104,7 @@ main.o main.i main.lst main.d : main.cpp imageIO.h lodepng.h /usr/include/string
   /usr/include/bits/huge_val.h /usr/include/bits/huge_valf.h \
   /usr/include/bits/huge_vall.h /usr/include/bits/inf.h \
   /usr/include/bits/nan.h /usr/include/bits/mathdef.h \
-  /usr/include/bits/mathcalls.h imageProcessor.h \
+  /usr/include/bits/mathcalls.h /usr/include/malloc.h imageProcessor.h \
   /usr/lib/gcc/ppu/4.1.1/include/c++/fstream \
   /usr/lib/gcc/ppu/4.1.1/include/c++/ppu/bits/basic_file.h \
   /usr/lib/gcc/ppu/4.1.1/include/c++/bits/fstream.tcc \

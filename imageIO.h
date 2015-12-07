@@ -4,6 +4,7 @@
 #include <iostream>
 #include <math.h>
 #include <algorithm>
+#include <malloc.h>
 
 class imageIO {
 
@@ -33,6 +34,6 @@ public:
 	
 	int isPowerOfTwo (unsigned int x);
 	 
-	unsigned char * squareImage(unsigned char origImage[], int imageWidth, int imageHeight, int imageBytes);
+	unsigned char* squareImage(unsigned char origImage[], int imageWidth, int imageHeight, int imageBytes);
 
 };

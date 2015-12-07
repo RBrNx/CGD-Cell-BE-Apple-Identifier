@@ -277,8 +277,8 @@ unsigned char* imageIO::squareImage(unsigned char origImage[], int imageWidth, i
 			newImageWidth = imageHeight;
 		}
 	}
-
-	unsigned char* squareImage = new unsigned char[newImageWidth*newImageHeight*imageBytes];
+	
+	unsigned char *squareImage = (unsigned char*)memalign(128,newImageWidth*newImageHeight*imageBytes);
 
 	for (int y = 0; y < newImageHeight; y++) {
 		for (int x = 0; x < newImageWidth; x++) {
@@ -302,6 +302,6 @@ unsigned char* imageIO::squareImage(unsigned char origImage[], int imageWidth, i
 
 	setImageWidth(newImageWidth);
 	setImageHeight(newImageHeight);
-
+	
 	return squareImage;
 }

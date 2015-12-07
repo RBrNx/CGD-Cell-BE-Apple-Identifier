@@ -132,39 +132,46 @@ unsigned char* hystTracking(unsigned char image[], int imageWidth, int imageHeig
 struct dmaData {
 	void * inputData;
 	void * outputData;
-	char padding[120];
+	int spuIterations;
+	char padding[116];
 };
 
 int main (unsigned long long spe_id, unsigned long long argp, unsigned long long envp){
 
-	int currentChunk = 0;
 	int chunkSize = 128 * 128;
 	dmaData input __attribute__((aligned(128)));
 	unsigned char lsbuffer[chunkSize]__attribute__((aligned(128)));
 	unsigned char greybuffer[chunkSize/4]__attribute__((aligned(128)));
 	int tagID = 1;
 	
+	unsigned int spuID = spu_read_in_mbox();
+	
 	printf("     Getting Struct for DMA \n");
 	mfc_get((void *)&input, argp, envp, tagID, 0 ,0);
 	mfc_write_tag_mask(1<<tagID);
 	mfc_read_tag_status_all();
 	
+	int currentChunk = spuID * input.spuIterations * 4 * chunkSize;
+	
+	printf("current spuID: %d \n", spuID);
+	printf("current Chunk: %d \n", currentChunk);
+	printf("current spuIterations: %d \n", input.spuIterations);
+	printf("current chunkSize: %d \n", chunkSize);
+	
 	printf("     InputImage Pointer: %p\n",input.inputData);
 	printf("     outputImage Pointer: %p\n",input.outputData);
-
 	
-	for(int i = 0; i < 4; i++){
-		mfc_get(lsbuffer, (unsigned int)(input.inputData)+currentChunk, chunkSize, tagID, 0, 0);
-		mfc_read_tag_status_all();
-		
-		RGBtoGreyscale(lsbuffer, 128, 128, 4, greybuffer);
-		//for(int j = 0; j < chunkSize; j++){
-			//greybuffer[i] = lsbuffer[i];
-		//}
-		
-		mfc_put(greybuffer, (unsigned int)(input.outputData)+currentChunk/4, chunkSize/4, tagID, 0, 0);
-		mfc_read_tag_status_all();
-		currentChunk += chunkSize;		
+	for(int iter = 0; iter < input.spuIterations; iter++){
+		for(int i = 0; i < 4; i++){
+			mfc_get(lsbuffer, (unsigned int)(input.inputData)+currentChunk, chunkSize, tagID, 0, 0);
+			mfc_read_tag_status_all();
+			
+			RGBtoGreyscale(lsbuffer, 128, 128, 4, greybuffer);
+			
+			mfc_put(greybuffer, (unsigned int)(input.outputData)+currentChunk/4, chunkSize/4, tagID, 0, 0);
+			mfc_read_tag_status_all();
+			currentChunk += chunkSize;		
+		}
 	}
 
 	return 0;
