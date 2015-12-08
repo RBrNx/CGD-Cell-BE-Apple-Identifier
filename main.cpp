@@ -44,8 +44,44 @@ struct dmaData {
 	char padding[116];
 };
 
+void initSPUs(int spus, ppu_pthread_data_t ptdata[] ,pthread_t pthread[], struct dmaData DMA, spe_program_handle_t program){
+	//Create a context and thread for each SPU
+	for(int i = 0; i < spus; i++){
+		unsigned int spuID = i;
+		printf("Create Context for SPU: %d \n", i);
+		//Create Context
+		ptdata[i].context = spe_context_create(0, NULL);
+		
+		//Load Program into Context
+		spe_program_load(ptdata[i].context, &program);
+		
+		ptdata[i].entry = SPE_DEFAULT_ENTRY;
+		ptdata[i].argp = (void *)&(DMA);
+		ptdata[i].envp = (void *) sizeof(DMA);
+		
+		printf("Create Thread for SPU %d \n", i);
+		//Create thread
+		pthread_create(&pthread[i], NULL, &ppu_pthread_function, &ptdata[i]);
+		//Send SPUID to each SPU 
+		spe_in_mbox_write(ptdata[i].context,&spuID,1,SPE_MBOX_ANY_NONBLOCKING);
+	}
+}
+
+void destroySPUs(int spus, ppu_pthread_data_t ptdata[], pthread_t pthread[]){
+	//Wait for threads to finish processing
+	for(int i = 0; i < spus; i++){
+		printf("Joining Thread for SPU %d \n", i);
+		pthread_join(pthread[i], NULL);
+		
+		printf("Destroying Context for SPU %d \n", i);
+		spe_context_destroy(ptdata[i].context);
+		
+	}
+}
+
 // SPU Init Data
-extern spe_program_handle_t main_spu; //Program Handle
+extern spe_program_handle_t greyscale_spu;
+extern spe_program_handle_t gaussian_spu; //Program Handle
 
 int main(){
 	ppu_pthread_data_t ptdata[8];
@@ -67,12 +103,7 @@ int main(){
 	imageHeight = imageLoader.getImageHeight();
 	imageSize = imageWidth * imageHeight * imageBytes;
 	
-	//unsigned char testData[imageSize]__attribute__((aligned(128)));
 	unsigned char greyData[imageSize/4]__attribute__((aligned(128)));
-	printf("Image Size: %d \n", imageSize);
-	for(int i = 0; i < imageSize; i++){
-		//testData[i] = squareData[i];
-	}
 	
 	dmaData DMA __attribute__((aligned(128)));
 	
@@ -82,43 +113,9 @@ int main(){
 	DMA.outputData = (void *)greyData;
 	DMA.spuIterations = iterations;
 	
-	printf("Size of: %d", sizeof(DMA.inputData));
-		
-	// Determine number of available SPU
-	//printf("%s \n", "Determining Number of SPUs");
-	//spus = spe_cpu_info_get(SPE_COUNT_USABLE_SPES, 0);
-	
-	//Create a context and thread for each SPU
-	for(int i = 0; i < 4; i++){
-		unsigned int spuID = i;
-		printf("Create Context for SPU: %d \n", i);
-		//Create Context
-		ptdata[i].context = spe_context_create(0, NULL);
-		
-		//Load Program into Context
-		spe_program_load(ptdata[i].context, &main_spu);
-		
-		ptdata[i].entry = SPE_DEFAULT_ENTRY;
-		ptdata[i].argp = (void *)&(DMA);
-		ptdata[i].envp = (void *) sizeof(dmaData);
-		
-		printf("Create Thread for SPU %d \n", i);
-		//Create thread
-		pthread_create(&pthread[i], NULL, &ppu_pthread_function, &ptdata[i]);
-		//Send SPUID to each SPU 
-		spe_in_mbox_write(ptdata[i].context,&spuID,1,SPE_MBOX_ANY_NONBLOCKING);
-	}
-	
-	//Wait for threads to finish processing
-	for(int i = 0; i < 4; i++){
-		printf("Joining Thread for SPU %d \n", i);
-		pthread_join(pthread[i], NULL);
-		
-		printf("Destroying Context for SPU %d \n", i);
-		spe_context_destroy(ptdata[i].context);
-		
-	}
-	
+	initSPUs(4, ptdata, pthread, DMA, greyscale_spu);
+	destroySPUs(4, ptdata, pthread);
+
 	unsigned char* paddedImage = new unsigned char[imageSize];
 	paddedImage = imagePro.padOutImage(greyData, imageWidth, imageHeight, imageBytes);
 

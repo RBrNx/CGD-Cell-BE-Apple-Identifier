@@ -43,7 +43,7 @@
 #			Subdirectories
 ########################################################################
 
-DIRS := SPU
+DIRS := SPU-Greyscale SPU-Gaussian
 
 ########################################################################
 #                       Target
@@ -56,7 +56,7 @@ PROGRAM_ppu	:= ParaAppleIdentifier_prog
 #			Imports
 ########################################################################
 
-IMPORTS := SPU/lib_main_spu.a -lspe2 -lpthread
+IMPORTS := SPU-Greyscale/lib_greyscale_spu.a SPU-Gaussian/lib_gaussian_spu.a -lspe2 -lpthread
 
 
 ########################################################################
