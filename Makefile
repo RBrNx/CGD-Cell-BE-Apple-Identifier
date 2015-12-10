@@ -43,7 +43,7 @@
 #			Subdirectories
 ########################################################################
 
-DIRS := SPU-Greyscale SPU-Gaussian SPU-Sobel SPU-DoubleT SPU-Hyst
+DIRS := SPU-Greyscale SPU-Gaussian SPU-Sobel SPU-EdgeStrengths SPU-NMS SPU-DoubleT SPU-Hyst
 
 ########################################################################
 #                       Target
@@ -56,7 +56,7 @@ PROGRAM_ppu	:= ParaAppleIdentifier_prog
 #			Imports
 ########################################################################
 
-IMPORTS := SPU-Greyscale/lib_greyscale_spu.a SPU-Gaussian/lib_gaussian_spu.a SPU-Sobel/lib_sobel_spu.a SPU-DoubleT/lib_doublet_spu.a SPU-Hyst/lib_hyst_spu.a -lspe2 -lpthread
+IMPORTS := SPU-Greyscale/lib_greyscale_spu.a SPU-Gaussian/lib_gaussian_spu.a SPU-Sobel/lib_sobel_spu.a SPU-EdgeStrengths/lib_edgestrength_spu.a SPU-NMS/lib_nms_spu.a SPU-DoubleT/lib_doublet_spu.a SPU-Hyst/lib_hyst_spu.a -lspe2 -lpthread
 
 
 ########################################################################

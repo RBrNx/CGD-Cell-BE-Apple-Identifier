@@ -5,24 +5,17 @@
 #include <libspe2.h>
 #include <pthread.h>
 #include <math.h>
+#include <string>
 
 imageIO imageLoader;
 imageProcessor imagePro;
 
-float sobelFilterX[9] = {	-1, 0, 1,
-							-2, 0, 2,
-							-1, 0, 1	};
-
-float sobelFilterY[9] = {	-1, -2, -1,
-							0, 0, 0,
-							1, 2, 1		};
-
-float gaussianFilter[25] = {	1, 4, 7, 4, 1,
-								4, 16, 26, 16, 4,
-								7, 26, 41, 26, 7,
-								4, 16, 26, 16, 4,
-								1, 4, 7, 4, 1		};
-
+float redHist[256];
+float greenHist[256];
+float blueHist[256];
+std::string imageArray[14] = { "Apples/Braeburn", "Apples/Courtland", "Apples/Fuji", "Apples/Gala", "Apples/Ginger-Gold",
+								"Apples/Golden-Delicious", "Apples/Granny-Smith", "Apples/Honeycrisp", "Apples/Jonagold",
+								"Apples/Jonathan", "Apples/McIntosh", "Apples/Pacific-Rose", "Apples/Paula-Red", "Apples/Red-Delicious" };
 
 // Data to send to the pthread
 typedef struct ppu_pthread_data { 
@@ -38,20 +31,6 @@ void* ppu_pthread_function(void* arg){
 	pthread_exit(NULL);
 }
 
-int findFactor(int num){
-	int largest;
-	
-	for(int i = 1; i<= num; i++){
-		if (!(num % i)) {
-			if(i != num && i <= 128 && i % 4 == 0){
-				largest = i;
-			}
-		}
-	}
-	
-	return largest;
-}
-
 struct dmaData {
 	void * inputData;
 	void * outputData;
@@ -63,6 +42,15 @@ struct sobelData {
 	void * inputData;
 	void * outputX;
 	void * outputY;
+	void * outputComb;
+	int imageWidth;
+	char padding[108];
+};
+
+struct nmsData {
+	void * inputDataX;
+	void * inputDataY;
+	void * outputData;
 	int imageWidth;
 	char padding[112];
 };
@@ -113,6 +101,29 @@ void initSPUs(int spus, ppu_pthread_data_t ptdata[] ,pthread_t pthread[], struct
 	}
 }
 
+void initSPUs(int spus, ppu_pthread_data_t ptdata[] ,pthread_t pthread[], struct nmsData dmaStruct, spe_program_handle_t program){
+	//Create a context and thread for each SPU
+	for(int i = 0; i < spus; i++){
+		unsigned int spuID = i;
+		printf("Create Context for SPU: %d \n", i);
+		//Create Context
+		ptdata[i].context = spe_context_create(0, NULL);
+		
+		//Load Program into Context
+		spe_program_load(ptdata[i].context, &program);
+		
+		ptdata[i].entry = SPE_DEFAULT_ENTRY;
+		ptdata[i].argp = (void *)&(dmaStruct);
+		ptdata[i].envp = (void *) sizeof(dmaStruct);
+		
+		printf("Create Thread for SPU %d \n", i);
+		//Create thread
+		pthread_create(&pthread[i], NULL, &ppu_pthread_function, &ptdata[i]);
+		//Send SPUID to each SPU 
+		spe_in_mbox_write(ptdata[i].context,&spuID,1,SPE_MBOX_ANY_NONBLOCKING);
+	}
+}
+
 void destroySPUs(int spus, ppu_pthread_data_t ptdata[], pthread_t pthread[]){
 	//Wait for threads to finish processing
 	for(int i = 0; i < spus; i++){
@@ -129,6 +140,8 @@ void destroySPUs(int spus, ppu_pthread_data_t ptdata[], pthread_t pthread[]){
 extern spe_program_handle_t greyscale_spu;
 extern spe_program_handle_t gaussian_spu;
 extern spe_program_handle_t sobel_spu;
+extern spe_program_handle_t edgestrength_spu;
+extern spe_program_handle_t nms_spu;
 extern spe_program_handle_t doublet_spu;
 extern spe_program_handle_t hyst_spu;
 
@@ -138,7 +151,7 @@ int main(){
 	unsigned int i;
 
 	//Load in Image
-	unsigned char* rawData = imageLoader.openImage("Apples/Gala.png");
+	unsigned char* rawData = imageLoader.openImage("GrannySmith.png");
 	int imageWidth = imageLoader.getImageWidth();
 	int imageHeight = imageLoader.getImageHeight();
 	int imageBytes = imageLoader.getImageBytes();
@@ -176,23 +189,78 @@ int main(){
 	sobelData sobelDMA __attribute__((aligned(128)));
 	unsigned char *sobelX = (unsigned char*)memalign(128,imageSize); //Sobel SQRT is currently done on the SPU, so sobelX is actually the combined X and Y
 	unsigned char *sobelY = (unsigned char*)memalign(128,imageSize);
+	unsigned char *sobelComb = (unsigned char*)memalign(128, imageSize);
 	sobelDMA.inputData = (void *)gaussData;
 	sobelDMA.outputX = (void *)sobelX;
 	sobelDMA.outputY = (void *)sobelY;
+	sobelDMA.outputComb = (void *)sobelComb;
 	sobelDMA.imageWidth = imageWidth;
 	initSPUs(4, ptdata, pthread, sobelDMA, sobel_spu);
 	destroySPUs(4, ptdata, pthread);
+	delete[] gaussData;
+	
+	//Calculate Edge Strengths for NMS on SPUs
+	nmsData nmsDMA __attribute__((aligned(128)));
+	unsigned char* edgeStrengths = (unsigned char*)memalign(128,imageSize);
+	nmsDMA.inputDataX = (void *)sobelX;
+	nmsDMA.inputDataY = (void *)sobelY;
+	nmsDMA.outputData = (void *)edgeStrengths;
+	nmsDMA.imageWidth = imageWidth;
+	initSPUs(4, ptdata, pthread, nmsDMA, edgestrength_spu);
+	destroySPUs(4, ptdata, pthread);
+	delete[] sobelX;
+	delete[] sobelY;
+	
+	//Perform NMS on SPUs
+	unsigned char* NMS = (unsigned char*)memalign(128,imageSize);
+	nmsDMA.inputDataX = (void *)sobelComb;
+	nmsDMA.inputDataY = (void *)edgeStrengths;
+	nmsDMA.outputData = (void *)NMS;
+	nmsDMA.imageWidth = imageWidth;
+	initSPUs(4, ptdata, pthread, nmsDMA, nms_spu);
+	destroySPUs(4, ptdata, pthread);
+	delete[] sobelComb;
+	
+	//Perform Double Thresholding on SPUs
+	unsigned char* DoubleT = (unsigned char*)memalign(128,imageSize);
+	DMA.inputData = (void *)NMS;
+	DMA.outputData = (void *)DoubleT;
+	DMA.imageWidth = imageWidth;
+	initSPUs(4, ptdata, pthread, DMA, doublet_spu);
+	destroySPUs(4, ptdata, pthread);
+	delete[] NMS;
+	
+	//Perform Hyst Tracking on SPUs
+	unsigned char* HystData = (unsigned char*)memalign(128,imageSize);
+	DMA.inputData = (void *)DoubleT;
+	DMA.outputData = (void *)HystData;
+	DMA.imageWidth = imageWidth;
+	initSPUs(4, ptdata, pthread, DMA, hyst_spu);
+	destroySPUs(4, ptdata, pthread);
+	delete[] DoubleT;
+	
+	//Fill from Edges on PPU
+	HystData = imagePro.fillFromEdges(HystData, imageWidth, imageHeight, 1);
+	
+	//Create Colour Histogram on PPU
+	rawData = imageLoader.openImage("GrannySmith.png");
+	imageWidth = imageLoader.getImageWidth();
+	imageHeight = imageLoader.getImageHeight();
+	imageBytes = imageLoader.getImageBytes();
+	imagePro.colourHistogram(rawData, imageWidth, imageHeight, imageBytes, HystData, redHist, greenHist, blueHist);
+	
+	//Save Histogram
+	//imagePro.saveHistogram("Apples/Courtland.txt", redHist, greenHist, blueHist);
+	
+	//Compare Histogram to Test Data
+	imagePro.compareHistogram(redHist, greenHist, blueHist, imageArray);
 	
 	//Pad back to Original Size and fill the sides
-	imageSize = imageWidth * imageHeight * imageBytes;
-	unsigned char* paddedImage = new unsigned char[imageSize];
-	paddedImage = imagePro.padOutImage(sobelX, imageWidth, imageHeight, imageBytes);
+	//imageSize = imageWidth * imageHeight * imageBytes;
+	//unsigned char* paddedImage = new unsigned char[imageSize];
+	//paddedImage = imagePro.padOutImage(HystData, imageWidth, imageHeight, imageBytes);
 
-	imageLoader.saveImage("Apples/gala-grey-gauss2.png", paddedImage, imageSize);
-	delete[] gaussData;
-	//delete[] sobelData;
-	//delete[] sobelX;
-	//delete[] sobelY;
+	//imageLoader.saveImage("Apples/gala-grey-gauss-nms-dt-hyst-fill.png", paddedImage, imageSize);
 	
 	return 0;
 }

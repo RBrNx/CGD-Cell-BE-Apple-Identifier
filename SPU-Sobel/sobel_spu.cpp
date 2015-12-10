@@ -46,9 +46,11 @@ struct sobelData {
 	void * inputData;
 	void * outputX;
 	void * outputY;
+	void * outputComb;
 	int imageWidth;
-	char padding[112];
+	char padding[108];
 };
+
 
 int main (unsigned long long spe_id, unsigned long long argp, unsigned long long envp){
 	printf("%s \n", "Applying Sobel Filter");
@@ -67,9 +69,9 @@ int main (unsigned long long spe_id, unsigned long long argp, unsigned long long
 	int chunkHeight = 3;
 	int chunkSize = chunkWidth * chunkHeight;
 	unsigned char lsbuffer[chunkSize]__attribute__((aligned(128)));
-	//unsigned char sobelX[chunkSize/3]__attribute__((aligned(128)));
-	//unsigned char sobelY[chunkSize/3]__attribute__((aligned(128)));
-	unsigned char sobelComb[chunkSize/3]__attribute__((algined(128)));
+	unsigned char sobelX[chunkSize/3]__attribute__((aligned(128)));
+	unsigned char sobelY[chunkSize/3]__attribute__((aligned(128)));
+	unsigned char sobelComb[chunkSize/3]__attribute__((aligned(128)));
 	
 	int currentChunk = spuID * input.imageWidth/4 * input.imageWidth;
 	
@@ -78,7 +80,6 @@ int main (unsigned long long spe_id, unsigned long long argp, unsigned long long
 		iterations = iterations - 2;
 	}
 	
-	printf("%s \n", "Running Sobel Filter");
 	for(int iter = 0; iter < iterations; iter++){
 		mfc_get(lsbuffer, (unsigned int)(input.inputData)+currentChunk, sizeof(lsbuffer), tagID, 0, 0);
 		mfc_read_tag_status_all();
@@ -96,21 +97,24 @@ int main (unsigned long long spe_id, unsigned long long argp, unsigned long long
 				int fin = sqrt((resultX * resultX * 3) + (resultY  *resultY * 3));
 
 				fin = fin > 255 ? 255 : fin;
-				//resultX = resultX > 255 ? 255 : resultX;
-				//resultY = resultY > 255 ? 255 : resultY;
+				resultX = resultX > 255 ? 255 : resultX;
+				resultX = resultX < 0 ? 0 : resultX;
+				resultY = resultY > 255 ? 255 : resultY;
+				resultY = resultY < 0 ? 0 : resultY;
 
 				unsigned char finalChar = fin;
-				//unsigned char finalXChar = resultX;
-				//unsigned char finalYChar = resultY;
+				unsigned char finalXChar = resultX;
+				unsigned char finalYChar = resultY;
 
 				sobelComb[x] = finalChar;
-				//sobelX[x] = finalXChar;
-				//sobelY[x] = finalYChar;
+				sobelX[x] = finalXChar;
+				sobelY[x] = finalYChar;
 			}
 		}
 		
-		mfc_put(sobelComb, (unsigned int)(input.outputX)+currentChunk, sizeof(sobelComb), tagID, 0, 0);
-		//mfc_put(sobelY, (unsigned int)(input.outputY)+currentChunk, sizeof(sobelY), tagID, 0, 0);
+		mfc_put(sobelComb, (unsigned int)(input.outputComb)+currentChunk, sizeof(sobelComb), tagID, 0, 0);
+		mfc_put(sobelX, (unsigned int)(input.outputX)+currentChunk, sizeof(sobelX), tagID, 0, 0);
+		mfc_put(sobelY, (unsigned int)(input.outputY)+currentChunk, sizeof(sobelY), tagID, 0, 0);
 		mfc_read_tag_status_all();
 		currentChunk += chunkWidth;		
 	}

@@ -48,7 +48,7 @@ public:
 
 	void saveHistogram(char * filename, float redHist[], float greenHist[], float blueHist[]);
 
-	std::string compareHistogram(float redHist[], float greenHist[], float blueHist[], std::string imageArray[]);
+	void compareHistogram(float redHist[], float greenHist[], float blueHist[], std::string imageArray[]);
 
 	void normaliseColourHistogram(float redHist[], float greenHist[], float blueHist[]);
 

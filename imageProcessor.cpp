@@ -149,13 +149,6 @@ void imageProcessor::colourHistogram(unsigned char image[], int imageWidth, int 
 			}
 		}
 	}
-
-	/*printf("%s", "Relevant Red Pixels: ");
-	printf("%d \n", redBucket);
-	printf("%s", "Relevant Green Pixels: ");
-	printf("%d \n", greenBucket);
-	printf("%s", "Relevant Blue Pixels: ");
-	printf("%d \n", blueBucket);*/
 }
 
 void imageProcessor::colourHistogram(unsigned char image[], int imageWidth, int imageHeight, int imageBytes, float redHist[], float greenHist[], float blueHist[]) {
@@ -187,13 +180,6 @@ void imageProcessor::colourHistogram(unsigned char image[], int imageWidth, int 
 			}
 		}
 	}
-
-	/*printf("%s", "Relevant Red Pixels: ");
-	printf("%d \n", redBucket);
-	printf("%s", "Relevant Green Pixels: ");
-	printf("%d \n", greenBucket);
-	printf("%s", "Relevant Blue Pixels: ");
-	printf("%d \n", blueBucket);*/
 }
 
 unsigned char* imageProcessor::NonMaxSuppress(unsigned char* sobelX, unsigned char* sobelY, unsigned char*  combinedSobel, int imageWidth, int imageHeight, int imageBytes) {
@@ -435,7 +421,7 @@ void imageProcessor::saveHistogram(char* filename, float redHist[], float greenH
 	file.close();
 }
 
-std::string imageProcessor::compareHistogram(float redHist[], float greenHist[], float blueHist[], std::string imageArray[]) {
+void imageProcessor::compareHistogram(float redHist[], float greenHist[], float blueHist[], std::string imageArray[]) {
 	float loadedRedHist[256];
 	float loadedBlueHist[256];
 	float loadedGreenHist[256];
@@ -456,7 +442,10 @@ std::string imageProcessor::compareHistogram(float redHist[], float greenHist[],
 	int currentClosestGreen;
 	int currentClosestBlue;
 
-	int closestArray[13];
+	int closestArray[15];
+	int redChiArray[15];
+	int greenChiArray[15];
+	int blueChiArray[15];
 	int j = 0;
 
 
@@ -491,24 +480,18 @@ std::string imageProcessor::compareHistogram(float redHist[], float greenHist[],
 			}
 		}
 
-		/*if (redChi < lowestRedChi) {
-			currentClosestRed = i;
-			lowestRedChi = redChi;
-		}
-		if (greenChi < lowestGreenChi) {
-			currentClosestGreen = i;
-			lowestGreenChi = greenChi;
-		}
-		if (blueChi < lowestBlueChi) {
-			currentClosestBlue = i;
-			lowestBlueChi = blueChi;
-		}*/
 		if (redChi <= 5 && greenChi <= 5 && blueChi <= 5) {
 			closestArray[j+1] = i;
+			redChiArray[j+1] = redChi;
+			greenChiArray[j+1] = greenChi;
+			blueChiArray[j+1] = blueChi;
 			j++;
 		}
 		else {
 			closestArray[j+1] = NULL;
+			redChiArray[j+1] = NULL;
+			greenChiArray[j+1] = NULL;
+			blueChiArray[j+1] = NULL;
 			j++;
 		}
 
@@ -517,20 +500,15 @@ std::string imageProcessor::compareHistogram(float redHist[], float greenHist[],
 		blueChi = 0;
 
 	}
-	//printf("%d", currentClosestRed);
-	//printf("%d", currentClosestGreen);
-	//printf("%d", currentClosestBlue);
+
 	printf("%s \n", "This Apple is Similar to: ");
-	for (int i = 0; i < 14; i++) {
+	for (int i = 1; i < 15; i++) {
 		if (closestArray[i] != NULL) {
-			std::string apple = imageArray[i].substr(7, imageArray[i].length() - 11);
-			printf("%s \n", apple.c_str());
+			std::string apple = imageArray[i-1].substr(7, imageArray[i].length() - 3);
+			printf("%s", apple.c_str());
+			printf("  Red Chi: %d, Green Chi: %d, Blue Chi: %d \n", redChiArray[i], greenChiArray[i], blueChiArray[i]);
 		}
 	}
-
-	std::cin.get();
-
-	return std::string("");
 }
 
 void imageProcessor::normaliseColourHistogram(float redHist[], float greenHist[], float blueHist[]) {
