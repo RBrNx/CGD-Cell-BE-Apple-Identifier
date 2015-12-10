@@ -39,19 +39,9 @@
 # --------------------------------------------------------------  
 # PROLOG END TAG zYx      
 
-PROGRAM_spu = main_spu   
-#SCC = spu-gcc
-#FLAGS = -Wall
-LIBRARY_embed:=lib_main_spu.a                                     
+PROGRAM_spu = gaussian_spu   
 
-#objects = main_spu.o imageProcessor.o
-#all:=$(PROGRAM_spu)
-#main_spu: $(objects)
-#		$(SCC) $(FLAGS) $(objects) -o main_spu
-#main_spu.o: main_spu.cpp imageProcessor.o
-#		$(SCC) $(FLAGS) -c main_spu.cpp
-#ImageProcessor.o:imageProcessor.h imageProcessor.cpp
-#		$(SCC) $(FLAGS) -c imageProcessor.cpp
+LIBRARY_embed:=lib_gaussian_spu.a                                     
 
 ########################################################################
 #			buildutils/make.footer

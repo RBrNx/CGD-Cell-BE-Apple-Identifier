@@ -1,4 +1,4 @@
-main_spu.o main_spu.i main_spu.lst main_spu.d : main_spu.cpp \
+hyst_spu.o hyst_spu.i hyst_spu.lst hyst_spu.d : hyst_spu.cpp \
   /usr/lib/gcc/spu/4.1.1/../../../../spu/include/stdio.h \
   /usr/lib/gcc/spu/4.1.1/../../../../spu/include/_ansi.h \
   /usr/lib/gcc/spu/4.1.1/../../../../spu/include/newlib.h \
