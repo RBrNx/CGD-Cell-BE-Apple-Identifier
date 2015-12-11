@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <string>
+#include <ppu_intrinsics.h>
 
 imageIO imageLoader;
 imageProcessor imagePro;
@@ -55,6 +56,7 @@ struct nmsData {
 	char padding[112];
 };
 
+//Three InitSPU functions to take a different one of the three structs I have
 void initSPUs(int spus, ppu_pthread_data_t ptdata[] ,pthread_t pthread[], struct dmaData dmaStruct, spe_program_handle_t program){
 	//Create a context and thread for each SPU
 	for(int i = 0; i < spus; i++){
@@ -146,6 +148,9 @@ extern spe_program_handle_t doublet_spu;
 extern spe_program_handle_t hyst_spu;
 
 int main(){
+	unsigned long long startTime, finishTime;
+	startTime = __mftb();
+
 	ppu_pthread_data_t ptdata[8];
 	pthread_t pthread[8];
 	unsigned int i;
@@ -160,7 +165,6 @@ int main(){
 	//Make image Power of Two
 	unsigned char *squareData = imageLoader.squareImage(rawData, imageWidth, imageHeight, imageBytes);
 	delete[] rawData;
-
 	imageWidth = imageLoader.getImageWidth();
 	imageHeight = imageLoader.getImageHeight();
 	imageSize = imageWidth * imageHeight * imageBytes;
@@ -198,6 +202,12 @@ int main(){
 	initSPUs(4, ptdata, pthread, sobelDMA, sobel_spu);
 	destroySPUs(4, ptdata, pthread);
 	delete[] gaussData;
+	
+	//Pad back to Original Size and save output
+	imageSize = imageWidth * imageHeight * imageBytes;
+	unsigned char* paddedImage = new unsigned char[imageSize];
+	paddedImage = imagePro.padOutImage(sobelComb, imageWidth, imageHeight, imageBytes);
+	imageLoader.saveImage("GrannySmith-Sobel.png", paddedImage, imageSize);
 	
 	//Calculate Edge Strengths for NMS on SPUs
 	nmsData nmsDMA __attribute__((aligned(128)));
@@ -242,6 +252,12 @@ int main(){
 	//Fill from Edges on PPU
 	HystData = imagePro.fillFromEdges(HystData, imageWidth, imageHeight, 1);
 	
+	//Pad back to Original Size and fill the sides
+	imageSize = imageWidth * imageHeight * imageBytes;
+	paddedImage = new unsigned char[imageSize];
+	paddedImage = imagePro.padOutImage(HystData, imageWidth, imageHeight, imageBytes);
+	imageLoader.saveImage("GrannySmith-Mask.png", paddedImage, imageSize);
+	
 	//Create Colour Histogram on PPU
 	rawData = imageLoader.openImage("GrannySmith.png");
 	imageWidth = imageLoader.getImageWidth();
@@ -250,17 +266,18 @@ int main(){
 	imagePro.colourHistogram(rawData, imageWidth, imageHeight, imageBytes, HystData, redHist, greenHist, blueHist);
 	
 	//Save Histogram
-	//imagePro.saveHistogram("Apples/Courtland.txt", redHist, greenHist, blueHist);
+	//imagePro.saveHistogram("Apples/Courtland.txt", redHist, greenHist, blueHist); //Only necessary to create histograms for the test data
 	
 	//Compare Histogram to Test Data
 	imagePro.compareHistogram(redHist, greenHist, blueHist, imageArray);
 	
-	//Pad back to Original Size and fill the sides
-	//imageSize = imageWidth * imageHeight * imageBytes;
-	//unsigned char* paddedImage = new unsigned char[imageSize];
-	//paddedImage = imagePro.padOutImage(HystData, imageWidth, imageHeight, imageBytes);
-
-	//imageLoader.saveImage("Apples/gala-grey-gauss-nms-dt-hyst-fill.png", paddedImage, imageSize);
+	finishTime = __mftb();
+	double difference = finishTime - startTime;
+	double micro = difference / 79.8; //Gives Execution time in microseconds
+	float milli = micro / 1000; //Gives execution time in milliseconds
+	float seconds = milli/ 1000; //Gives execution time in seconds
+	printf("Execution time in Milliseconds is: %f \n", milli);
+	printf("Execution time in Seconds is: %f \n", seconds);
 	
 	return 0;
 }

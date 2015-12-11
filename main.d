@@ -113,4 +113,5 @@ main.o main.i main.lst main.d : main.cpp imageIO.h lodepng.h /usr/include/string
   /usr/include/libspe2.h /usr/include/errno.h /usr/include/bits/errno.h \
   /usr/include/linux/errno.h /usr/include/asm/errno.h \
   /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
-  /usr/include/libspe2-types.h /usr/include/cbea_map.h
+  /usr/include/libspe2-types.h /usr/include/cbea_map.h \
+  /usr/lib/gcc/ppu/4.1.1/include/ppu_intrinsics.h
