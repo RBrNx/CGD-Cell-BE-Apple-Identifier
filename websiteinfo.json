@@ -1,6 +1,6 @@
 {
   "show": true,
   "image": "img/IOT-Window@2x.png",
-  "title": "AdventOfCode2017",
-  "description": "This is a test description"
+  "title": "Image Processing on PS3",
+  "description": "Project that focused on performing Image Processing using the Cell Broadband Processor in the PS3."
 }
