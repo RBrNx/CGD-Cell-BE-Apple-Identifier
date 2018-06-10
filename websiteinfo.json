@@ -1,7 +1,7 @@
 {
   "show": true,
-  "imageMain": "img/AppleIdentifier.jpg",
-  "imageDrop": "img/AppleIdentifier.jpg",
+  "imageMain": "img/AppleIdentifier.png",
+  "imageDrop": "img/AppleIdentifier_2.png",
   "title": "Image Processing on PS3",
   "description": "Project that focused on performing Image Processing using the Cell Broadband Processor in the PS3."
 }
