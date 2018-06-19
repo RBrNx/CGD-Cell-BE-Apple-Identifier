@@ -6,7 +6,7 @@
   "description": "Project that focused on performing Image Processing using the Cell Broadband Processor in the PS3.",
   "carouselImages": [ "AppleIdentifier.png", "AppleIdentifier_2.png" ],
   "aboutProject": "<p>This project focused on producing an application which could 'identify' an apple based on size, shape and colour similarities with other apples. This application was then modified to run in parallel on the <strong>Playstation 3's Cell Broadband Processor</strong>.</p><p>Identification is performed by taking an input image, converting it to greyscale, passing it through a <strong>Gaussian filter</strong>, before finally passing it through a <strong>Sobel filter</strong> to perform the edge detection. A number of algorithms are then used to clean up any anomalies in this filtered image.</p><p>Using the edge detection as a mask, a colour histogram is created from only the pixels inside the mask. This histogram is then normalised and compared to histograms for a control group of apples, with any similarities being output by the application.</p>",
-  "techSheet": [ "Parallel coding", "C++", "lodePNG", "Gaussian Filter", "Sobel Filter", "Non-Maximum Suppression", "Double Thresholding", "Hysteresis Tracking" ],
+  "techSheet": [ "Parallel computing", "C++", "lodePNG", "Gaussian Filter", "Sobel Filter", "Non-Maximum Suppression", "Double Thresholding", "Hysteresis Tracking" ],
   "links": [ 
     { "linkText": "Apple Identifier - Cell BE (Github)", "link": "https://github.com/RBrNx/CGD-Cell-BE-Apple-Identifier" },
     { "linkText": "Apple Identifier - x86 (Github)", "link": "https://github.com/RBrNx/GCD-Serial-Apple-Identifier" }
